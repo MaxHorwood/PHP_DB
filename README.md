@@ -1,6 +1,6 @@
 # PHP_DB
 
-###Usage
+### Usage
 
 A _easy_ way to create prepared statements.
 
