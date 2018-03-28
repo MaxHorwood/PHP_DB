@@ -34,19 +34,26 @@ class DB {
      * $get_result - When true, puts all data in an array and returns it
      * $rows     - names of the rows array('id') 
      */
-    public function do_query($sql_stmt, $values, $keys, $get_res=false, $rows=null){
+    public function do_query($sql_stmt, $values=null, $rows=null){
         $stmt = $this->$sql_con->stmt_init();
+		$isSelect = false;
         if ($stmt->prepare($sql_stmt)){
             // Make sure there are some keys
-            if ($keys != ""){
-                $stmt->bind_param($keys, ...$values);
+            if ($values != null){
+                $stmt->bind_param($values["keys"], ...$values["rows"]);
             }
             $stmt->execute();
             // Error
             if ($stmt->errno > 0){
                 $this->set_error(true, "Statement Execution Error");
             }else{
-                if ($get_res){
+				// Return data if query has 'SELECT' at the start
+				// Could be more complex, UPDATE returns altered rows etc
+				$get_res = explode(" ", $sql_stmt, 1)[0]
+				if ($get_res == "SELECT" and $rows != null) {
+					$isSelect = true;
+				}
+                if ($isSelect){
                     /** Puts all results in an array:
                      * $out[0]['name_given'];
                      */
@@ -58,23 +65,20 @@ class DB {
                             $out[$size][$name] = $row[$name];
                         }
                     }
+					$stmt->close();
+					// Maybe set error if $out is empty?
+					return $out;
                 }
             }
             $stmt->close();
-            // Should only be set if returning a selection
-            if ($get_res){ 
-                return $out;
-            }else {
-                return null;
-            }
         }else{
             $this->set_error(true, "Statement Prepare Error");
-            return null;
         }
     }
 	// Example usage
     public function insert_data($name, $email, $age){
-        $this->do_query("INSERT INTO `users` (id, name, email, age) VALUES (default, ?, ?, ?)", array($name, $email, $age), "ssi");
+		$data = array("rows"=>array($name, $email, $age), "keys"=>"ssi");
+        $this->do_query("INSERT INTO `users` (id, name, email, age) VALUES (default, ?, ?, ?)", $data);
 		print_r(json_encode($this->get_error());
     }
 
